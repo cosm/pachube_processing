@@ -1,6 +1,6 @@
 package eeml;
 
-//v.0.9 (June 2008)
+//v.1.01 (November 2008)
 //EEML (Extended Environments Markup Language) see http://www.eeml.org/ for more info
 
 //The EEML library facilitates the sharing of EEML documents between remote environments via

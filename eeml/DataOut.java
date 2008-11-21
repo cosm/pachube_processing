@@ -1,6 +1,6 @@
 package eeml;
 
-//v.0.9 (June 2008)
+//v.1.01 (November 2008)
 //EEML (Extended Environments Markup Language) see http://www.eeml.org/ for more info
 
 //The EEML library facilitates the sharing of EEML documents between remote environments via
@@ -19,7 +19,8 @@ import java.lang.reflect.*;
  * This is the class to use for making data available to remote environments/applications.
  * It creates a 'server' object (based on Processing's network library) that sends 
  * data to remote clients that request your local EEML data. (See below for instructions
- * on POSTing updates instead).
+ * on manual updates, in case a 'server' is not possible or desirable -- this is tailored 
+ * specifically for use with Pachube).
  * <br><br>
  * <b>Automatic updates on request</b>
  * <br><br>
@@ -39,18 +40,20 @@ import java.lang.reflect.*;
  * </pre>
  * <b>Manual updates only when required</b>
  * <br><br>
- * If you don't have an open IP address or want to POST data only when necessary (e.g. only
- * if a datastream state changes) then you can use the alternative form of the DataOut object, to 
- * update manually. In this case you would normally update the values of your individual streamed
- * data with the update() method then POST the EEML data using the eemlPOST() method. 
+ * If you are behind a firewall, don't have an open IP address, or want to update data only when necessary 
+ * (e.g. only if a datastream state changes) then you can use the alternative form of the DataOut object, 
+ * to update manually. In this case you would normally update the values of your individual streamed
+ * data with the update() method then update the EEML data using the updatePachube() method, which 
+ * returns 200 unless there was a problem (in which case it returns other status codes 
+ * (http://www.w3.org/Protocols/HTTP/HTRESP.html) and/or throws an exception).
  * <pre>
- * DataOut myDataOut = new DataOut(this, "POST_URL", "API_KEY");  
+ * DataOut myDataOut = new DataOut(this, "FEED_URL", "API_KEY");  
  * myDataOut.addData(0,"tag1,tag2,tag3");
  * 
  * myDataOut.update(0, myVariable); // updates stream 0 with the value of myVariable.
  * 
- * if (myDataOut.eemlPOST().equals("OK")){
- * 		- data was updated successfully.
+ * if (myDataOut.updatePachube() == 200){
+ * 		// data was updated successfully.
  * }
  * </pre>
  * <b>Using Pachube</b>
@@ -90,7 +93,7 @@ public class DataOut extends Thread {
 	private int myport;
 	private Out dataOut;
 	private boolean running;
-	private String postURL;
+	private String updateURL;
 	private String pachubeAPIKey;
 	PApplet parent;
 
@@ -133,26 +136,26 @@ public class DataOut extends Thread {
 	}
 
 	/**
-	 * DataOut object that enables manual POSTing of EEML data
+	 * DataOut object that enables manual updating of EEML data
 	 * 
-	 * <pre>DataOut myDataOut = new DataOut(this, "URL_TO_POST_TO", "YOUR_API_KEY");</pre>
+	 * <pre>DataOut myDataOut = new DataOut(this, "URL_TO_UPDATE_TO", "YOUR_API_KEY");</pre>
 	 * @param parent usually 'this'
-	 * @param postURL URL that was provided when the feed was registered
+	 * @param updateURL URL that was provided when the feed was registered
 	 * @param key the Pachube API key used to access Pachube feeds (requires registration at pachube.com)
 	 * @see DataOut(PApplet parent, int port)
 	 */
-	public DataOut(PApplet parent, String postURL, String key) {
+	public DataOut(PApplet parent, String updateURL, String key) {
 		this.parent = parent;
-		this.postURL = postURL;
+		this.updateURL = updateURL;
 		this.pachubeAPIKey = key;
 
-		System.out.println("New DataOut created, POST enabled.");
+		System.out.println("New DataOut created, manual update enabled.");
 
 		try {
 			dataOut = new Out(parent);
 		} 
 		catch (Exception e) {
-			System.out.println("There was a problem creating the POST-enabled DataOut object.");
+			System.out.println("There was a problem creating the manual-update DataOut object.");
 			System.out.println(e);
 			quit();
 		}
@@ -202,17 +205,19 @@ public class DataOut extends Thread {
 	}
 
 	/**
-	 * Used to POST data to Pachube in order to update a feed (for example
-	 * when your IP address is not externally accessible and you want to 
-	 * update your datastreams manually).
-	 * <pre>if (myDataOut.eemlPOST().equals("OK")){
+	 * Used to PUT data to Pachube in order to update a feed (for example
+	 * when your IP address is not externally accessible and/or you want to 
+	 * update your datastreams manually). To see typical serve response codes
+	 * see here: http://www.w3.org/Protocols/HTTP/HTRESP.html (200 is when
+	 * everything goes right).
+	 * <pre>if (myDataOut.updatePachube() == 200){
 	 *     - server response indicates that the feed was successfully updated
 	 * }</pre>
-	 * @see DataOut(PApplet parent, String postURL, String key)
+	 * @see DataOut(PApplet parent, String updateURL, String key)
 	 * @return
 	 */
-	public String eemlPOST(){
-		return dataOut.eemlPOST(postURL, pachubeAPIKey);
+	public int updatePachube(){
+		return dataOut.updatePachube(updateURL, pachubeAPIKey);
 	}
 
 	/**
