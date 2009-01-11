@@ -1,5 +1,13 @@
 package eeml;
 
+//v.1.02a (January 2009) Stefan Ferber
+// Important: Not ready yet
+//  * Date-Time-Stamp is not part of the XML Archive File
+// Changes
+// - Added printXML() methods
+// - Added updateDateTimeStamp() methods
+// - Added archive methods: setArchiveDirectory(), updateArchive(), setArchiveFilename//
+
 //v.1.01 (November 2008)
 //EEML (Extended Environments Markup Language) see http://www.eeml.org/ for more info
 
@@ -11,6 +19,14 @@ package eeml;
 //thank you! 
 
 import processing.core.PApplet;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.util.*;
 import java.lang.reflect.*;
 
 
@@ -97,6 +113,11 @@ public class DataOut extends Thread {
 	private String pachubeAPIKey;
 	PApplet parent;
 
+	// added by Fb 09-01-11
+	private File archiveDirectory;
+	private File archiveFile;
+	private Calendar dateTimeStamp;
+	
 	/**
 	 * When the object receives a request from a remote client
 	 * it invokes the onReceiveRequest() method in your application
@@ -106,11 +127,10 @@ public class DataOut extends Thread {
 	 * @param parent usually 'this'
 	 * @param port port to serve on 
 	 */
-	public DataOut(PApplet parent, int port) {
-
-		this.parent = parent;
+	public DataOut(PApplet parent, int port){
+		this(parent);
 		this.myport = port;		
-
+		
 		System.out.println("New DataOut created, serving on port " + myport);
 
 		try {
@@ -145,10 +165,11 @@ public class DataOut extends Thread {
 	 * @see DataOut(PApplet parent, int port)
 	 */
 	public DataOut(PApplet parent, String updateURL, String key) {
-		this.parent = parent;
+		this(parent);
 		this.updateURL = updateURL;
 		this.pachubeAPIKey = key;
 
+		
 		System.out.println("New DataOut created, manual update enabled.");
 
 		try {
@@ -162,7 +183,12 @@ public class DataOut extends Thread {
 		running = false;
 	}
 
-
+	protected DataOut(PApplet parent) {
+		this.parent = parent;
+		archiveDirectory = new File(".");
+		archiveFile = new File(archiveDirectory, "DataOut.xml");
+		dateTimeStamp = Calendar.getInstance();
+	}
 
 	/**
 	 * Set up a data stream with a particular id with comma-delimited tags.
@@ -345,5 +371,48 @@ public class DataOut extends Thread {
 		interrupt(); 
 	}
 
+	/**
+	 * Prints the XML information in this object to the console
+	 * 
+	 * <pre>myDataOut.printXML();</pre>
+	 */
+	public void printXML() {
+		dataOut.printXML(); 
+	}
+	/**
+	 * Prints the XML information in this object to the console. 
+	 * Very nice for test purpose.
+	 * <pre>myDataOut.printXML();</pre>
+	 * @param output Output stream
+	 */
+	protected void printXML(PrintWriter output) {
+		dataOut.printXML(output);
+	}
+	public void updateDateTimeStamp(int year, int month, int date, int hourOfDay, int minute, int second){
+		dateTimeStamp.set(year, month, date, hourOfDay, minute, second);
+		
+	}
+	
+	protected boolean setArchiveFilename(String filename){
+		archiveFile = new File(archiveDirectory, filename);
+		return !archiveFile.exists();
+	}
 
+	public boolean setArchiveDirectory(String pathName){
+		archiveDirectory = new File(pathName);
+		return (archiveDirectory.canWrite() && archiveDirectory.isDirectory());
+	}
+	
+	public boolean updateArchive() throws IOException{
+		if (setArchiveFilename("DataOut" + Long.toString(dateTimeStamp.getTimeInMillis())+".xml")){
+			if (archiveFile.createNewFile()){
+				PrintWriter pw = new PrintWriter(new FileOutputStream(archiveFile));
+				printXML(pw);
+				pw.close();
+				return pw.checkError();
+			}
+			else return false;
+		}
+		else return false;
+	}
 }
